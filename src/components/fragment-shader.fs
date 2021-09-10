@@ -57,12 +57,18 @@ float getStripes(vec2 uv, float t) {
 }
 
 void main() {
+  // stretch image to full area
   float aspect = u_resolution.x / u_resolution.y;
   vec2 uv = coverScreen(gl_FragCoord.xy, u_resolution, aspect);
+
+  // `uv` coordinates distort the space of the image
+  // (like taking a cloth the image is printed on and folding/twisting/etc)
   // uv = screenDistort(uv);
   // uv = scanWarp(uv, u_time);
   vec4 vid_out = texture2D(image, uv);
 
+  // editing .rgb changes the color of the image -
+  // static lines, noise, vignette effect, etc
   // vid_out.rgb += getStripes(uv, u_time);
   // vid_out.rgb += getNoise(uv * 3.0, u_time) / 3.0;
   // vid_out.rgb *= vignette(uv, u_time);
