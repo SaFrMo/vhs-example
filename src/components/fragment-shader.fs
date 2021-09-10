@@ -7,6 +7,12 @@ float ramp(float y, float start, float end) {
   return (1.0 - fact) * inside;
 }
 
+// Return 0 or 1, like flicking a light switch.
+// see https://www.desmos.com/calculator/pyxpllulmh
+// a = amplitude of superimposed wave: higher = shorter state change durations, but mainly used as flavor
+// b = timescale: higher = longer state durations
+// c = preferred state: -1 always returns 1, 1 always returns 0. 
+// <0 prefers returning 1, >0 prefers returning 0, 0 is an even split
 float onOff(float a, float b, float c, float t) {
   return step(c, sin(t + a * cos(t * b)));
 }
@@ -29,9 +35,22 @@ vec2 screenDistort(vec2 uv) {
 }
 
 vec2 scanWarp(vec2 uv, float t) {
-  float window = 1.0 / (1.0 + 20.0 * (uv.y - mod(t / 4.0, 1.0)) * (uv.y - mod(t / 4.0, 1.0)));
-  uv.x = uv.x + sin(uv.y * 10.0 + t) / 50.0 * onOff(4.0, 4.0, 0.3, t) * (1.0 + cos(t * 80.0)) * window;
-  float vShift = 0.4 * onOff(2.0, 3.0, 0.9, t) * (sin(t) * sin(t * 20.0) + (0.5 + 0.1 * sin(t * 200.0) * cos(t)));
+  //float window = 1.0 / (1.0 + 20.0 * (uv.y - mod(t / 4.0, 1.0)) * (uv.y - mod(t / 4.0, 1.0)));
+  float effectStrength = 2.;
+
+  float horizontalWobbleFrequency = 10.;
+  // lower = more amplitude
+  float inverseHorizontalWobbleAmplitude = 150.;
+  uv.x +=
+    // horizontal wobble amount
+  sin(uv.y * horizontalWobbleFrequency + t) / inverseHorizontalWobbleAmplitude
+    // whether the horizontal wobble will be applied
+  * onOff(4.0, 4.0, 0.3, t) 
+    // ???
+  * (1.0 + cos(t * 80.0)) 
+    //
+  * effectStrength;
+  float vShift = 0.;//0.4 * onOff(2.0, 3.0, 0.9, t) * (sin(t) * sin(t * 20.0) + (0.5 + 0.1 * sin(t * 200.0) * cos(t)));
   uv.y = mod(uv.y + vShift, 1.0);
   return uv;
 }
@@ -42,7 +61,9 @@ float vignette(vec2 uv, float t) {
 }
 
 float crtLines(vec2 uv, float t) {
-  return ((12.0 + mod(uv.y * 100.0 + t, 1.0)) / 13.0);
+  float contrast = 0.2;
+  float lineCount = 100.;
+  return (((1. / contrast) + fract(uv.y * lineCount + t)) * contrast);
 }
 
 float getNoise(vec2 p, float t) {
@@ -64,7 +85,7 @@ void main() {
   // `uv` coordinates distort the space of the image
   // (like taking a cloth the image is printed on and folding/twisting/etc)
   // uv = screenDistort(uv);
-  // uv = scanWarp(uv, u_time);
+  uv = scanWarp(uv, u_time);
   vec4 vid_out = texture2D(image, uv);
 
   // editing .rgb changes the color of the image -
@@ -72,7 +93,8 @@ void main() {
   // vid_out.rgb += getStripes(uv, u_time);
   // vid_out.rgb += getNoise(uv * 3.0, u_time) / 3.0;
   // vid_out.rgb *= vignette(uv, u_time);
-  // vid_out.rgb *= crtLines(uv, u_time);
+  vid_out.rgb *= crtLines(uv, u_time);
+  // vid_out.rgb = vec3(onOff(4.0, 4.0, -1.6, u_time));
 
   gl_FragColor = vid_out;
 }
